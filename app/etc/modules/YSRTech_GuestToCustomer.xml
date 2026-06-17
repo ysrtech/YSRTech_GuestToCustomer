@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * YSRTech_GuestToCustomer
+ *
+ * Module declaration. Registers the module in the "community" codepool
+ * and declares a dependency on Mage_Sales and Mage_Customer.
+ */
+-->
+<config>
+    <modules>
+        <YSRTech_GuestToCustomer>
+            <active>true</active>
+            <codePool>community</codePool>
+            <depends>
+                <Mage_Sales/>
+                <Mage_Customer/>
+            </depends>
+        </YSRTech_GuestToCustomer>
+    </modules>
+</config>

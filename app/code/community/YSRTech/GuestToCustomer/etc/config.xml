@@ -1,0 +1,93 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * YSRTech_GuestToCustomer module configuration.
+ *
+ * Declares the helper and model groups, wires up the event observers,
+ * and sets the default configuration values.
+ */
+-->
+<config>
+    <modules>
+        <YSRTech_GuestToCustomer>
+            <version>1.0.0</version>
+        </YSRTech_GuestToCustomer>
+    </modules>
+
+    <global>
+        <helpers>
+            <ysrtech_guesttocustomer>
+                <class>YSRTech_GuestToCustomer_Helper</class>
+            </ysrtech_guesttocustomer>
+        </helpers>
+        <models>
+            <ysrtech_guesttocustomer>
+                <class>YSRTech_GuestToCustomer_Model</class>
+            </ysrtech_guesttocustomer>
+        </models>
+    </global>
+
+    <!--
+        Observers are registered in the global scope so they fire in both the
+        frontend (checkout / customer registration) and adminhtml (admin order
+        creation) areas. Each observer re-checks the enable/trigger config, so
+        registering globally is safe.
+    -->
+    <global>
+        <events>
+            <!-- Fired after an order is placed (frontend checkout & admin order create). -->
+            <sales_order_place_after>
+                <observers>
+                    <ysrtech_guesttocustomer_link_on_order_place>
+                        <class>ysrtech_guesttocustomer/observer</class>
+                        <method>linkOnOrderPlace</method>
+                    </ysrtech_guesttocustomer_link_on_order_place>
+                </observers>
+            </sales_order_place_after>
+
+            <!-- Fired after a customer account is successfully created. -->
+            <customer_register_success>
+                <observers>
+                    <ysrtech_guesttocustomer_link_on_register>
+                        <class>ysrtech_guesttocustomer/observer</class>
+                        <method>linkOnCustomerRegister</method>
+                    </ysrtech_guesttocustomer_link_on_register>
+                </observers>
+            </customer_register_success>
+        </events>
+    </global>
+
+    <default>
+        <ysrtech_guesttocustomer>
+            <general>
+                <enabled>1</enabled>
+            </general>
+            <triggers>
+                <on_order_place>1</on_order_place>
+                <on_customer_register>1</on_customer_register>
+            </triggers>
+        </ysrtech_guesttocustomer>
+    </default>
+
+    <adminhtml>
+        <acl>
+            <resources>
+                <admin>
+                    <children>
+                        <system>
+                            <children>
+                                <config>
+                                    <children>
+                                        <ysrtech_guesttocustomer translate="title" module="ysrtech_guesttocustomer">
+                                            <title>Guest To Customer</title>
+                                        </ysrtech_guesttocustomer>
+                                    </children>
+                                </config>
+                            </children>
+                        </system>
+                    </children>
+                </admin>
+            </resources>
+        </acl>
+    </adminhtml>
+</config>

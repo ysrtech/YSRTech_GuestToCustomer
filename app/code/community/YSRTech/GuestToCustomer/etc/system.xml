@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * System configuration for YSRTech_GuestToCustomer.
+ *
+ * Adds a "YSRTech" tab to System > Configuration with an enable/disable
+ * toggle and a toggle for each linking trigger.
+ */
+-->
+<config>
+    <tabs>
+        <ysrtech translate="label" module="ysrtech_guesttocustomer">
+            <label>YSRTech</label>
+            <sort_order>400</sort_order>
+        </ysrtech>
+    </tabs>
+
+    <sections>
+        <ysrtech_guesttocustomer translate="label" module="ysrtech_guesttocustomer">
+            <label>Guest To Customer</label>
+            <tab>ysrtech</tab>
+            <frontend_type>text</frontend_type>
+            <sort_order>10</sort_order>
+            <show_in_default>1</show_in_default>
+            <show_in_website>1</show_in_website>
+            <show_in_store>0</show_in_store>
+            <groups>
+                <general translate="label">
+                    <label>General</label>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>10</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+                        <enabled translate="label comment">
+                            <label>Enabled</label>
+                            <comment>Master switch. When disabled, no guest orders are linked by any trigger.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </enabled>
+                    </fields>
+                </general>
+
+                <triggers translate="label">
+                    <label>Triggers</label>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>20</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+                        <on_order_place translate="label comment">
+                            <label>Link On Order Placement</label>
+                            <comment>When a guest places an order whose email matches a registered customer, link it automatically.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </on_order_place>
+                        <on_customer_register translate="label comment">
+                            <label>Link On Customer Registration</label>
+                            <comment>When a new customer registers, link any pre-existing guest orders that match their email.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </on_customer_register>
+                    </fields>
+                </triggers>
+            </groups>
+        </ysrtech_guesttocustomer>
+    </sections>
+</config>
