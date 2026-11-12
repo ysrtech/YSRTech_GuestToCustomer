@@ -298,6 +298,157 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
+     * The customers who have never been on the newsletter list, as a select
+     * of their ids.
+     *
+     * "Never" is strict: a customer with any row on the list - subscribed,
+     * unsubscribed, unconfirmed, not active - is not one of them, whether the
+     * row is tied to their account or only carries their address. Somebody
+     * who said no stays no. Where the Email Campaigns module keeps a
+     * suppression list (unsubscribes through a link, bounces, complaints),
+     * an address on it is left out as well.
+     *
+     * @return Varien_Db_Select
+     */
+    protected function _neverSubscribedSelect()
+    {
+        $resource    = Mage::getSingleton('core/resource');
+        $read        = $resource->getConnection('core_read');
+        $subscribers = $resource->getTableName('newsletter/subscriber');
+
+        $select = $read->select()
+            ->from(array('c' => $resource->getTableName('customer/entity')), array('entity_id', 'email', 'store_id', 'website_id'))
+            ->where('c.is_active = 1')
+            ->where("c.email IS NOT NULL AND c.email != ''")
+            ->where("NOT EXISTS (SELECT 1 FROM {$subscribers} s1 WHERE s1.customer_id = c.entity_id)")
+            ->where("NOT EXISTS (SELECT 1 FROM {$subscribers} s2 WHERE s2.subscriber_email = c.email)");
+
+        $suppressed = $resource->getTableName('ysrtech_emailcampaigns_suppression');
+
+        if ($read->isTableExists($suppressed)) {
+            $select->where("NOT EXISTS (SELECT 1 FROM {$suppressed} p WHERE p.email = c.email)");
+        }
+
+        return $select;
+    }
+
+    /**
+     * How many customers have never been on the newsletter list.
+     *
+     * @return int
+     */
+    public function countNeverSubscribed()
+    {
+        $select = $this->_neverSubscribedSelect()->reset(Zend_Db_Select::COLUMNS)->columns(array(new Zend_Db_Expr('COUNT(*)')));
+
+        return (int) Mage::getSingleton('core/resource')->getConnection('core_read')->fetchOne($select);
+    }
+
+    /**
+     * One batch of "subscribe every customer who never subscribed".
+     *
+     * Rows are written straight to the newsletter table, so nothing emails
+     * anybody: no confirmation request, no "you are subscribed". Each new
+     * subscriber is tied to the account and carries its name.
+     *
+     * @param int $after Only customers with an id above this; 0 to start.
+     * @param int $limit How many customers to add.
+     * @return array{subscribed:int, after:int, done:bool}
+     */
+    public function subscribeCustomersBatch($after = 0, $limit = 500)
+    {
+        $resource = Mage::getSingleton('core/resource');
+        $write    = $resource->getConnection('core_write');
+        $table    = $resource->getTableName('newsletter/subscriber');
+        $limit    = max(1, (int) $limit);
+
+        $rows = $write->fetchAll(
+            $this->_neverSubscribedSelect()
+                ->where('c.entity_id > ?', (int) $after)
+                ->order('c.entity_id ASC')
+                ->limit($limit)
+        );
+
+        $result = array('subscribed' => 0, 'after' => (int) $after, 'done' => count($rows) < $limit);
+
+        if (!$rows) {
+            return $result;
+        }
+
+        $ids   = array();
+        foreach ($rows as $row) {
+            $ids[] = (int) $row['entity_id'];
+        }
+
+        // Names, for a list that keeps them
+        $names = array();
+
+        if ($this->_subscriberHasNames()) {
+            foreach (array('firstname', 'lastname') as $code) {
+                $attribute = Mage::getSingleton('eav/config')->getAttribute('customer', $code);
+
+                if ($attribute && $attribute->getId()) {
+                    $names[$code] = $write->fetchPairs(
+                        $write->select()
+                            ->from($attribute->getBackendTable(), array('entity_id', 'value'))
+                            ->where('attribute_id = ?', (int) $attribute->getId())
+                            ->where('entity_id IN (?)', $ids)
+                    );
+                }
+            }
+        }
+
+        $defaultStore = array();
+        $now          = Varien_Date::now();
+        $insert       = array();
+
+        foreach ($rows as $row) {
+            $id      = (int) $row['entity_id'];
+            $storeId = (int) $row['store_id'];
+
+            // An account made in the admin belongs to no store view: the
+            // list wants one, so its website's own
+            if (!$storeId) {
+                $websiteId = (int) $row['website_id'];
+
+                if (!isset($defaultStore[$websiteId])) {
+                    try {
+                        $defaultStore[$websiteId] = (int) Mage::app()->getWebsite($websiteId)->getDefaultStore()->getId();
+                    } catch (Exception $e) {
+                        $defaultStore[$websiteId] = (int) Mage::app()->getDefaultStoreView()->getId();
+                    }
+                }
+
+                $storeId = $defaultStore[$websiteId];
+            }
+
+            $line = array(
+                'store_id'                => $storeId,
+                'change_status_at'        => $now,
+                'customer_id'             => $id,
+                'subscriber_email'        => $row['email'],
+                'subscriber_status'       => Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED,
+                'subscriber_confirm_code' => Mage::helper('core')->getRandomString(32),
+            );
+
+            if ($this->_subscriberHasNames()) {
+                $line['subscriber_firstname'] = isset($names['firstname'][$id]) ? $names['firstname'][$id] : null;
+                $line['subscriber_lastname']  = isset($names['lastname'][$id]) ? $names['lastname'][$id] : null;
+            }
+
+            $insert[]        = $line;
+            $result['after'] = $id;
+        }
+
+        $write->insertMultiple($table, $insert);
+        $result['subscribed'] = count($insert);
+
+        Mage::log(sprintf('Subscribed %d customers who had never been on the newsletter list (up to customer_id %d).', count($insert), $result['after']), Zend_Log::INFO, self::LOG_FILE);
+
+        return $result;
+    }
+
+    /**
      * Bring the newsletter list up to date with the accounts: tie each
      * subscriber to the customer with the same address on the same website,
      * and give a subscriber with no name the customer's.

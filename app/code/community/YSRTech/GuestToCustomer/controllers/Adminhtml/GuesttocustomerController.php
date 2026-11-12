@@ -56,6 +56,28 @@ class YSRTech_GuestToCustomer_Adminhtml_GuesttocustomerController extends Mage_A
     }
 
     /**
+     * How many customers have never been on the newsletter list.
+     */
+    public function subscribeCountAction()
+    {
+        $this->_answer(function () {
+            return array('customers' => Mage::helper('ysrtech_guesttocustomer')->countNeverSubscribed());
+        });
+    }
+
+    /**
+     * One batch of subscribing them. `after` is the customer id the last batch reached.
+     */
+    public function subscribeRunAction()
+    {
+        $this->_answer(function () {
+            @set_time_limit(120);
+
+            return Mage::helper('ysrtech_guesttocustomer')->subscribeCustomersBatch((int) $this->getRequest()->getPost('after'), 500);
+        });
+    }
+
+    /**
      * Only a POST carrying the session's key does anything: these change
      * customers and orders.
      *
