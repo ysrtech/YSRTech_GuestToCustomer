@@ -26,7 +26,7 @@ The account is made quietly:
 - **No email is sent** - no welcome, no confirmation, no newsletter notice.
 - **The password is random** and known to nobody. The person signs in by
   resetting it (or through whatever passwordless login the store has).
-- **Nobody is subscribed to the newsletter.** A newsletter row that already
+- **Nobody is subscribed to the newsletter** unless you switch that on (below). A newsletter row that already
   exists for the address is attached to the new account with its status
   exactly as it was.
 - The account belongs to the order's website and the store's default customer
@@ -37,11 +37,20 @@ The account is made quietly:
 
 | Setting | Config path | Default |
 | --- | --- | --- |
-| Create Accounts For Guests | `ysrtech_guesttocustomer/create/enabled` | No |
+| Auto-Generate Account For New Emails | `ysrtech_guesttocustomer/create/enabled` | No |
 | Create As Each Guest Order Is Placed | `ysrtech_guesttocustomer/create/on_order_place` | Yes |
 | Copy The Order Addresses | `ysrtech_guesttocustomer/create/copy_addresses` | Yes |
+| Subscribe New Accounts To The Newsletter | `ysrtech_guesttocustomer/create/subscribe` | No |
 
-For the guests who ordered before it was switched on:
+**Subscribe New Accounts** puts each new account on the newsletter list
+without a confirmation email. Only addresses the newsletter has never seen:
+anybody already on the list, unsubscribed included, is left as they are. Switch
+it on only if ordering counts as agreeing to marketing email for your store.
+
+For the guests who ordered before it was switched on, press **Apply To All
+Existing Guest Orders** on the same configuration page. It works through the
+orders a hundred at a time and shows its progress; it can be stopped and run
+again. The same from the command line:
 
 ```bash
 php shell/guesttocustomer.php --dry-run --create   # what it would do

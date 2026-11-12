@@ -26,6 +26,7 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
     const XML_PATH_CREATE_ENABLED       = 'ysrtech_guesttocustomer/create/enabled';
     const XML_PATH_CREATE_ON_ORDER      = 'ysrtech_guesttocustomer/create/on_order_place';
     const XML_PATH_CREATE_ADDRESSES     = 'ysrtech_guesttocustomer/create/copy_addresses';
+    const XML_PATH_CREATE_SUBSCRIBE     = 'ysrtech_guesttocustomer/create/subscribe';
 
     /**
      * Master enable switch, scoped to the given store (or website).
@@ -199,6 +200,10 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
         // module have another go at the row
         $this->_restoreSubscription($subscription, $customer);
 
+        if ($subscription === null && Mage::getStoreConfigFlag(self::XML_PATH_CREATE_SUBSCRIBE, $store)) {
+            $this->_subscribe($customer, $store);
+        }
+
         Mage::log(sprintf(
             'Created customer_id %d for %s (website %d) from order #%s.',
             $customer->getId(), $email, $websiteId, $order->getIncrementId()
@@ -255,6 +260,109 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
             array('subscriber_status' => (int) $before['subscriber_status'], 'customer_id' => (int) $customer->getId()),
             array('subscriber_id = ?' => (int) $before['subscriber_id'])
         );
+    }
+
+    /**
+     * Put a new account on the newsletter list, where the store has chosen
+     * to (the "Subscribe New Accounts" setting).
+     *
+     * Only an address the newsletter has never heard of: somebody who is on
+     * the list already, in whatever state - unsubscribed above all - is left
+     * exactly as they are. Written with the newsletter model in import mode,
+     * so no confirmation or "you are subscribed" email goes out.
+     *
+     * @param Mage_Customer_Model_Customer $customer
+     * @param Mage_Core_Model_Store        $store
+     * @return void
+     */
+    protected function _subscribe(Mage_Customer_Model_Customer $customer, $store)
+    {
+        try {
+            /** @var Mage_Newsletter_Model_Subscriber $subscriber */
+            $subscriber = Mage::getModel('newsletter/subscriber');
+            $subscriber->setImportMode(true)
+                ->setStoreId((int) $store->getId())
+                ->setCustomerId((int) $customer->getId())
+                ->setSubscriberEmail($customer->getEmail())
+                ->setSubscriberStatus(Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED)
+                ->setSubscriberConfirmCode($subscriber->randomSequence())
+                ->setChangeStatusAt(Varien_Date::now())
+                ->save();
+        } catch (Exception $e) {
+            Mage::log(
+                'Could not subscribe customer_id ' . $customer->getId() . ': ' . $e->getMessage(),
+                Zend_Log::WARN,
+                self::LOG_FILE
+            );
+        }
+    }
+
+    /**
+     * One batch of the retroactive run: the next guest orders below a given
+     * id, newest first, each linked to its account - which is made first for
+     * a guest who has none.
+     *
+     * Walked by id rather than by page number: linked orders drop out of the
+     * "guest" filter as the run goes, and page 2 of a shrinking list skips
+     * whatever slid onto page 1. The caller passes back the `below` it was
+     * given until `done` is true.
+     *
+     * @param int|null $below  Only orders with an id under this; null to start from the newest.
+     * @param int      $limit  How many orders to look at.
+     * @param bool     $create Give a guest with no account one.
+     * @param bool     $dryRun Save nothing.
+     * @return array{scanned:int, linked:int, created:int, errors:int, below:int|null, done:bool}
+     */
+    public function runBatch($below = null, $limit = 100, $create = true, $dryRun = false)
+    {
+        $collection = Mage::getResourceModel('sales/order_collection')
+            ->addFieldToSelect('entity_id')
+            ->addFieldToFilter('customer_is_guest', 1)
+            ->addFieldToFilter('customer_email', array('neq' => ''))
+            ->addFieldToFilter('customer_email', array('notnull' => true))
+            ->setOrder('entity_id', Varien_Data_Collection::SORT_ORDER_DESC)
+            ->setPageSize(max(1, (int) $limit))
+            ->setCurPage(1);
+
+        if ($below !== null) {
+            $collection->addFieldToFilter('entity_id', array('lt' => (int) $below));
+        }
+
+        $ids    = $collection->getColumnValues('entity_id');
+        $result = array('scanned' => 0, 'linked' => 0, 'created' => 0, 'errors' => 0, 'below' => $below, 'done' => count($ids) < max(1, (int) $limit));
+
+        foreach ($ids as $id) {
+            $result['below'] = (int) $id;
+            $result['scanned']++;
+
+            try {
+                $order = Mage::getModel('sales/order')->load($id);
+
+                if ($this->linkOrderToCustomer($order, $dryRun, $create)) {
+                    $result['linked']++;
+                    $result['created'] += $this->lastCreated ? 1 : 0;
+                }
+            } catch (Exception $e) {
+                $result['errors']++;
+                Mage::log('Batch failed for order id ' . $id . ': ' . $e->getMessage(), Zend_Log::ERR, self::LOG_FILE);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * How many guest orders there are to go through.
+     *
+     * @return int
+     */
+    public function countGuestOrders()
+    {
+        return (int) Mage::getResourceModel('sales/order_collection')
+            ->addFieldToFilter('customer_is_guest', 1)
+            ->addFieldToFilter('customer_email', array('neq' => ''))
+            ->addFieldToFilter('customer_email', array('notnull' => true))
+            ->getSize();
     }
 
     /**

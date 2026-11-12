@@ -78,7 +78,8 @@
                 </triggers>
                 <create translate="label comment">
                     <label>Accounts For Guests</label>
-                    <comment>Give everybody who orders as a guest a customer account, so their orders, addresses and history are in one place. The account is made quietly: no email is sent, the password is random (they sign in by resetting it), and they are not subscribed to the newsletter. For guests who ordered before this was switched on, run shell/guesttocustomer.php --create.</comment>
+                    <expanded>1</expanded>
+                    <comment>Give everybody who orders as a guest a customer account, so their orders, addresses and history are in one place. The account is made quietly: no email is sent and the password is random (they sign in by resetting it). For guests who ordered before this was switched on, use the button below.</comment>
                     <frontend_type>text</frontend_type>
                     <sort_order>30</sort_order>
                     <show_in_default>1</show_in_default>
@@ -86,7 +87,7 @@
                     <show_in_store>0</show_in_store>
                     <fields>
                         <enabled translate="label comment">
-                            <label>Create Accounts For Guests</label>
+                            <label>Auto-Generate Account For New Emails</label>
                             <comment>When a guest order has no registered customer with the same email on its website, create one and link the order to it.</comment>
                             <frontend_type>select</frontend_type>
                             <source_model>adminhtml/system_config_source_yesno</source_model>
@@ -97,7 +98,7 @@
                         </enabled>
                         <on_order_place translate="label comment">
                             <label>Create As Each Guest Order Is Placed</label>
-                            <comment>Yes: from now on, every guest order gets its account straight away. No: accounts are only made when the shell script is run.</comment>
+                            <comment>Yes: from now on, every guest order gets its account straight away. No: accounts are only made when the button below (or the shell script) is run.</comment>
                             <frontend_type>select</frontend_type>
                             <source_model>adminhtml/system_config_source_yesno</source_model>
                             <sort_order>20</sort_order>
@@ -115,6 +116,26 @@
                             <show_in_website>1</show_in_website>
                             <show_in_store>0</show_in_store>
                         </copy_addresses>
+                        <subscribe translate="label comment">
+                            <label>Subscribe New Accounts To The Newsletter</label>
+                            <comment>Yes: each account made here is also put on the newsletter list, without a confirmation email. Only addresses the newsletter has never seen: anybody already on the list, unsubscribed included, is left as they are. Only switch this on if your customers have agreed to marketing email by ordering.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>40</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </subscribe>
+                        <apply translate="label comment">
+                            <label>Existing Guest Orders</label>
+                            <comment>Goes through every guest order already in the store, gives each guest with no account one, and links their orders to it, using the settings above as they were last saved. Safe to stop and run again: orders already linked are skipped.</comment>
+                            <frontend_type>button</frontend_type>
+                            <frontend_model>ysrtech_guesttocustomer/adminhtml_system_config_apply</frontend_model>
+                            <sort_order>50</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>0</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </apply>
                     </fields>
                 </create>
             </groups>

@@ -10,7 +10,7 @@
 <config>
     <modules>
         <YSRTech_GuestToCustomer>
-            <version>1.1.0</version>
+            <version>1.2.0</version>
         </YSRTech_GuestToCustomer>
     </modules>
 
@@ -20,6 +20,11 @@
                 <class>YSRTech_GuestToCustomer_Helper</class>
             </ysrtech_guesttocustomer>
         </helpers>
+        <blocks>
+            <ysrtech_guesttocustomer>
+                <class>YSRTech_GuestToCustomer_Block</class>
+            </ysrtech_guesttocustomer>
+        </blocks>
         <models>
             <ysrtech_guesttocustomer>
                 <class>YSRTech_GuestToCustomer_Model</class>
@@ -80,10 +85,22 @@
                 <enabled>0</enabled>
                 <on_order_place>1</on_order_place>
                 <copy_addresses>1</copy_addresses>
+                <subscribe>0</subscribe>
             </create>
         </ysrtech_guesttocustomer>
     </default>
 
+    <admin>
+        <routers>
+            <adminhtml>
+                <args>
+                    <modules>
+                        <YSRTech_GuestToCustomer before="Mage_Adminhtml">YSRTech_GuestToCustomer_Adminhtml</YSRTech_GuestToCustomer>
+                    </modules>
+                </args>
+            </adminhtml>
+        </routers>
+    </admin>
     <adminhtml>
         <acl>
             <resources>
