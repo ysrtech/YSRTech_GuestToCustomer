@@ -535,7 +535,15 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
             ->setCustomerIsGuest(0)
             ->setCustomerGroupId($customer->getGroupId());
 
-        $order->save();
+        /*
+         * Written as those three columns and nothing more (the order grid is
+         * kept in step by the resource). A full save() of the order would run
+         * everything that listens for an order being saved - status checks,
+         * gift card and registry modules, anything that sends an email when an
+         * order "changes" - on orders that may be years old. Linking an order
+         * to an account is not an event in the order's life.
+         */
+        $order->getResource()->saveAttribute($order, array('customer_id', 'customer_is_guest', 'customer_group_id'));
 
         Mage::log(sprintf(
             'Linked order #%s (entity_id %d, website %d, email %s) to customer_id %d (group %d).',
