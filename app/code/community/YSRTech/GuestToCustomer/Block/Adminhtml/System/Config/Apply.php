@@ -30,6 +30,7 @@ class YSRTech_GuestToCustomer_Block_Adminhtml_System_Config_Apply extends Mage_A
                 'done'     => $h->__('Done. %1 orders looked at: %3 accounts made, %4 orders linked, %5 left as they are, %6 errors.'),
                 'stopped'  => $h->__('Stopped: %s Press the button to carry on from where it stopped.'),
                 'errors'   => $h->__('Details of the errors are in var/log/ysrtech_guesttocustomer.log.'),
+                'names'    => $h->__('%1 newsletter subscribers were given their name from their account.'),
             ),
         ));
 
@@ -75,7 +76,13 @@ class YSRTech_GuestToCustomer_Block_Adminhtml_System_Config_Apply extends Mage_A
         running = true; button.disabled = true; button.classList.add("disabled");
 
         post(cfg.count).then(function (c) {
-            if (!c.orders) { say(cfg.t.none); finish(); return; }
+            if (!c.orders) {
+                // Nothing to link, but the list may still be missing names from an earlier run
+                return post(cfg.run, {below: null}).then(function (r) {
+                    say(cfg.t.none + (r.subscribers && r.subscribers.named ? " " + fill(cfg.t.names, [r.subscribers.named]) : ""));
+                    finish();
+                });
+            }
             if (!window.confirm(cfg.t.confirm.replace("%s", String(c.orders).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",")))) { say(""); finish(); return; }
 
             var step = function (below) {
@@ -83,6 +90,7 @@ class YSRTech_GuestToCustomer_Block_Adminhtml_System_Config_Apply extends Mage_A
                     ["scanned", "linked", "created", "errors"].forEach(function (k) { total[k] += r[k]; });
                     if (r.done) {
                         say(fill(cfg.t.done, [total.scanned, c.orders, total.created, total.linked, total.scanned - total.linked - total.errors, total.errors])
+                            + (r.subscribers && r.subscribers.named ? " " + fill(cfg.t.names, [r.subscribers.named]) : "")
                             + (total.errors ? " " + cfg.t.errors : ""));
                         finish();
                         return;

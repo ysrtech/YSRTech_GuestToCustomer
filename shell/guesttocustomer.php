@@ -139,12 +139,17 @@ class YSRTech_GuestToCustomer_Shell extends Mage_Shell_Abstract
             unset($collection);
         } while ($count >= $batchSize);
 
+        $subscribers = $dryRun ? array('linked' => 0, 'named' => 0) : $helper->fillSubscriberNames();
+
         echo "\n----------------------------------------\n";
         echo sprintf("Guest orders looked at  : %d\n", $scanned);
         echo sprintf("%s : %d\n", $dryRun ? 'Accounts that would be made' : 'Accounts made           ', $created);
         echo sprintf("%s : %d\n", $dryRun ? 'Orders that would be linked' : 'Orders linked           ', $linked);
         echo sprintf("Left as they are        : %d\n", $scanned - $linked - $errors);
         echo sprintf("Errors                  : %d\n", $errors);
+        if (!$dryRun) {
+            echo sprintf("Subscribers given names : %d\n", $subscribers['named']);
+        }
         echo "----------------------------------------\n";
 
         if (!$create && $scanned - $linked - $errors > 0) {

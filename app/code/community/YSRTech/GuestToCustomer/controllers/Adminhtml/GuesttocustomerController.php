@@ -42,7 +42,16 @@ class YSRTech_GuestToCustomer_Adminhtml_GuesttocustomerController extends Mage_A
             // through an order
             @set_time_limit(120);
 
-            return Mage::helper('ysrtech_guesttocustomer')->runBatch($below, self::BATCH, true, false);
+            $helper = Mage::helper('ysrtech_guesttocustomer');
+            $result = $helper->runBatch($below, self::BATCH, true, false);
+
+            // At the end of the run: the newsletter list is tied to the
+            // accounts, and subscribers with no name are given theirs
+            if ($result['done']) {
+                $result['subscribers'] = $helper->fillSubscriberNames();
+            }
+
+            return $result;
         });
     }
 

@@ -260,6 +260,95 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
             array('subscriber_status' => (int) $before['subscriber_status'], 'customer_id' => (int) $customer->getId()),
             array('subscriber_id = ?' => (int) $before['subscriber_id'])
         );
+
+        // A subscriber who signed up with an address alone now has a name:
+        // fill it in where theirs is empty, never over one they gave
+        if ($this->_subscriberHasNames()) {
+            foreach (array('subscriber_firstname' => $customer->getFirstname(), 'subscriber_lastname' => $customer->getLastname()) as $column => $value) {
+                if (trim((string) $value) !== '') {
+                    $write->update(
+                        $table,
+                        array($column => $value),
+                        array('subscriber_id = ?' => (int) $before['subscriber_id'], "({$column} IS NULL OR {$column} = '')")
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Whether the newsletter table keeps a name beside the address. OpenMage
+     * 20 does; Magento 1 and older OpenMage do not.
+     *
+     * @return bool
+     */
+    protected function _subscriberHasNames()
+    {
+        static $has = null;
+
+        if ($has === null) {
+            $resource = Mage::getSingleton('core/resource');
+            $table    = $resource->getTableName('newsletter/subscriber');
+            $read     = $resource->getConnection('core_read');
+            $has      = $read->tableColumnExists($table, 'subscriber_firstname')
+                && $read->tableColumnExists($table, 'subscriber_lastname');
+        }
+
+        return $has;
+    }
+
+    /**
+     * Bring the newsletter list up to date with the accounts: tie each
+     * subscriber to the customer with the same address on the same website,
+     * and give a subscriber with no name the customer's.
+     *
+     * For the whole list at once, in two statements - which is what puts
+     * right the subscribers whose accounts were made before names were
+     * carried across. Names somebody gave when subscribing are kept, and
+     * nobody's subscription status is touched.
+     *
+     * @return array{linked:int, named:int}
+     */
+    public function fillSubscriberNames()
+    {
+        $resource    = Mage::getSingleton('core/resource');
+        $write       = $resource->getConnection('core_write');
+        $subscribers = $resource->getTableName('newsletter/subscriber');
+        $customers   = $resource->getTableName('customer/entity');
+        $stores      = $resource->getTableName('core/store');
+        $result      = array('linked' => 0, 'named' => 0);
+
+        // A subscriber row belongs to a store view; the account to a website
+        $result['linked'] = (int) $write->query(
+            "UPDATE {$subscribers} s
+               JOIN {$stores} st ON st.store_id = s.store_id
+               JOIN {$customers} c ON c.email = s.subscriber_email AND c.website_id = st.website_id
+                SET s.customer_id = c.entity_id
+              WHERE s.customer_id = 0 OR s.customer_id IS NULL"
+        )->rowCount();
+
+        if (!$this->_subscriberHasNames()) {
+            return $result;
+        }
+
+        foreach (array('firstname' => 'subscriber_firstname', 'lastname' => 'subscriber_lastname') as $code => $column) {
+            $attribute = Mage::getSingleton('eav/config')->getAttribute('customer', $code);
+
+            if (!$attribute || !$attribute->getId()) {
+                continue;
+            }
+
+            $named = (int) $write->query(
+                "UPDATE {$subscribers} s
+                   JOIN {$attribute->getBackendTable()} v ON v.entity_id = s.customer_id AND v.attribute_id = " . (int) $attribute->getId() . "
+                    SET s.{$column} = v.value
+                  WHERE s.customer_id > 0 AND (s.{$column} IS NULL OR s.{$column} = '') AND v.value IS NOT NULL AND v.value != ''"
+            )->rowCount();
+
+            $result['named'] = max($result['named'], $named);
+        }
+
+        return $result;
     }
 
     /**
@@ -286,8 +375,16 @@ class YSRTech_GuestToCustomer_Helper_Data extends Mage_Core_Helper_Abstract
                 ->setSubscriberEmail($customer->getEmail())
                 ->setSubscriberStatus(Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED)
                 ->setSubscriberConfirmCode($subscriber->randomSequence())
-                ->setChangeStatusAt(Varien_Date::now())
-                ->save();
+                ->setChangeStatusAt(Varien_Date::now());
+
+            // The list shows a name beside each address, where the table has
+            // somewhere to keep one
+            if ($this->_subscriberHasNames()) {
+                $subscriber->setSubscriberFirstname($customer->getFirstname())
+                    ->setSubscriberLastname($customer->getLastname());
+            }
+
+            $subscriber->save();
         } catch (Exception $e) {
             Mage::log(
                 'Could not subscribe customer_id ' . $customer->getId() . ': ' . $e->getMessage(),
