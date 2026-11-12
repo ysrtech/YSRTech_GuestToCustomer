@@ -76,6 +76,47 @@
                         </on_customer_register>
                     </fields>
                 </triggers>
+                <create translate="label comment">
+                    <label>Accounts For Guests</label>
+                    <comment>Give everybody who orders as a guest a customer account, so their orders, addresses and history are in one place. The account is made quietly: no email is sent, the password is random (they sign in by resetting it), and they are not subscribed to the newsletter. For guests who ordered before this was switched on, run shell/guesttocustomer.php --create.</comment>
+                    <frontend_type>text</frontend_type>
+                    <sort_order>30</sort_order>
+                    <show_in_default>1</show_in_default>
+                    <show_in_website>1</show_in_website>
+                    <show_in_store>0</show_in_store>
+                    <fields>
+                        <enabled translate="label comment">
+                            <label>Create Accounts For Guests</label>
+                            <comment>When a guest order has no registered customer with the same email on its website, create one and link the order to it.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>10</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </enabled>
+                        <on_order_place translate="label comment">
+                            <label>Create As Each Guest Order Is Placed</label>
+                            <comment>Yes: from now on, every guest order gets its account straight away. No: accounts are only made when the shell script is run.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>20</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </on_order_place>
+                        <copy_addresses translate="label comment">
+                            <label>Copy The Order Addresses</label>
+                            <comment>Put the billing and shipping addresses of the order in the new account as its default addresses.</comment>
+                            <frontend_type>select</frontend_type>
+                            <source_model>adminhtml/system_config_source_yesno</source_model>
+                            <sort_order>30</sort_order>
+                            <show_in_default>1</show_in_default>
+                            <show_in_website>1</show_in_website>
+                            <show_in_store>0</show_in_store>
+                        </copy_addresses>
+                    </fields>
+                </create>
             </groups>
         </ysrtech_guesttocustomer>
     </sections>

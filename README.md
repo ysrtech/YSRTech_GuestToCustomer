@@ -14,6 +14,46 @@ It can link orders at three points:
 3. **Retroactively** via a shell script, for orders placed before the module
    was installed.
 
+## Accounts for guests (optional, off by default)
+
+Linking only helps when the guest already has an account. Switch on
+**Accounts For Guests** and a guest who has none is given one, so that everybody
+who has ever ordered is a customer with their orders, addresses and history in
+one place.
+
+The account is made quietly:
+
+- **No email is sent** - no welcome, no confirmation, no newsletter notice.
+- **The password is random** and known to nobody. The person signs in by
+  resetting it (or through whatever passwordless login the store has).
+- **Nobody is subscribed to the newsletter.** A newsletter row that already
+  exists for the address is attached to the new account with its status
+  exactly as it was.
+- The account belongs to the order's website and the store's default customer
+  group; the name comes from the order (or its billing address).
+- The order's billing and shipping addresses become the account's default
+  addresses (can be switched off).
+- An order whose email is not a valid address is left alone.
+
+| Setting | Config path | Default |
+| --- | --- | --- |
+| Create Accounts For Guests | `ysrtech_guesttocustomer/create/enabled` | No |
+| Create As Each Guest Order Is Placed | `ysrtech_guesttocustomer/create/on_order_place` | Yes |
+| Copy The Order Addresses | `ysrtech_guesttocustomer/create/copy_addresses` | Yes |
+
+For the guests who ordered before it was switched on:
+
+```bash
+php shell/guesttocustomer.php --dry-run --create   # what it would do
+php shell/guesttocustomer.php --create --limit 20  # try it on a few
+php shell/guesttocustomer.php --create --quiet     # everything, totals only
+```
+
+The script works newest order first, so an account takes its name and
+addresses from the person's latest order. `--create` works whether or not the
+setting above is on. Whether your store may create accounts for people who
+chose to check out as guests is a question for your privacy policy.
+
 ## Important: per-website email uniqueness
 
 Magento enforces customer email uniqueness **per website** by default (account

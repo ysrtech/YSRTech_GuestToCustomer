@@ -55,6 +55,51 @@ class YSRTech_GuestToCustomer_Model_Observer
     }
 
     /**
+     * Observer for sales_order_save_commit_after.
+     *
+     * Gives the person behind a guest order an account, and links the order
+     * to it. Done once the order is safely stored rather than while it is
+     * being placed: by then the checkout's own database transaction is over,
+     * so nothing here can undo an order or be undone with one.
+     *
+     * The event fires on every save of every order, so the cheap checks come
+     * first; an order already tied to an account stops at the second line.
+     *
+     * @param Varien_Event_Observer $observer
+     * @return $this
+     */
+    public function createOnOrderCommit(Varien_Event_Observer $observer)
+    {
+        static $seen = array();
+
+        try {
+            /** @var Mage_Sales_Model_Order $order */
+            $order = $observer->getEvent()->getOrder();
+            if (!$order instanceof Mage_Sales_Model_Order || !$order->getId()
+                || !$order->getCustomerIsGuest() || $order->getCustomerId() || isset($seen[$order->getId()])
+            ) {
+                return $this;
+            }
+
+            $seen[$order->getId()] = true;
+
+            if (!$this->_helper()->isCreateOnOrderPlaceEnabled($order->getStoreId())) {
+                return $this;
+            }
+
+            $this->_helper()->linkOrderToCustomer($order, false, true);
+        } catch (Exception $e) {
+            Mage::log(
+                'createOnOrderCommit failed: ' . $e->getMessage(),
+                Zend_Log::ERR,
+                YSRTech_GuestToCustomer_Helper_Data::LOG_FILE
+            );
+        }
+
+        return $this;
+    }
+
+    /**
      * Observer for customer_register_success.
      *
      * When a new customer registers, link any pre-existing guest orders that

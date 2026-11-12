@@ -10,7 +10,7 @@
 <config>
     <modules>
         <YSRTech_GuestToCustomer>
-            <version>1.0.0</version>
+            <version>1.1.0</version>
         </YSRTech_GuestToCustomer>
     </modules>
 
@@ -45,6 +45,15 @@
                 </observers>
             </sales_order_place_after>
 
+            <!-- Fired once an order is stored: where a guest is given an account. -->
+            <sales_order_save_commit_after>
+                <observers>
+                    <ysrtech_guesttocustomer_create_on_order>
+                        <class>ysrtech_guesttocustomer/observer</class>
+                        <method>createOnOrderCommit</method>
+                    </ysrtech_guesttocustomer_create_on_order>
+                </observers>
+            </sales_order_save_commit_after>
             <!-- Fired after a customer account is successfully created. -->
             <customer_register_success>
                 <observers>
@@ -66,6 +75,12 @@
                 <on_order_place>1</on_order_place>
                 <on_customer_register>1</on_customer_register>
             </triggers>
+            <!-- Off until switched on: making accounts for people is the store's decision -->
+            <create>
+                <enabled>0</enabled>
+                <on_order_place>1</on_order_place>
+                <copy_addresses>1</copy_addresses>
+            </create>
         </ysrtech_guesttocustomer>
     </default>
 
